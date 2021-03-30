@@ -191,7 +191,7 @@ class TreeSearchLineServiceStatus(Agent):
             # Construct the action where only line status of line l is switched
             action = action_space.get_do_nothing_action(as_class_Action=True)
             action_space.set_lines_status_switch_from_id(action=action, line_id=l, new_switch_value=1)
-            simulated_reward = self.environment.simulate(action=action)
+            _,simulated_reward,_,_= self.environment.simulate(action=action)
 
             # Store ROI values
             simulated_rewards.append(simulated_reward)
@@ -203,7 +203,7 @@ class TreeSearchLineServiceStatus(Agent):
         if self.verbose:
             print('    Simulating do-nothing action', end='')
         donothing_action = self.environment.action_space.get_do_nothing_action()
-        donothing_simulated_reward = self.environment.simulate(action=donothing_action)
+        _,donothing_simulated_reward,_,_ = self.environment.simulate(action=donothing_action)
         simulated_rewards.append(donothing_simulated_reward)
         simulated_actions.append(donothing_action)
 
@@ -222,6 +222,7 @@ class TreeSearchLineServiceStatus(Agent):
                     simulated_rewards.index(best_simulated_reward), best_simulated_reward))
 
         return best_action
+
 
 
 class GreedySearch(Agent):

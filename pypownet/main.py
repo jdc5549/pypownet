@@ -6,6 +6,7 @@ import argparse
 from pypownet.environment import RunEnv
 from pypownet.runner import Runner
 import pypownet.agent
+from pytictoc import TicToc
 
 parser = argparse.ArgumentParser(description='CLI tool to run experiments using PyPowNet.')
 parser.add_argument('-a', '--agent', metavar='AGENT_CLASS', default='DoNothing', type=str,
@@ -46,6 +47,8 @@ parser.add_argument('-vv', '--vverbose', action='store_true',
 
 
 def main():
+    t = TicToc()
+    t.tic()
     args = parser.parse_args()
     env_class = RunEnv
     agent_class = eval('pypownet.agent.{}'.format(args.agent))
@@ -65,7 +68,7 @@ def main():
     runner = Runner(env, agent, args.render, args.verbose, args.vverbose, args.parameters, args.level, args.niter)
     final_reward = runner.loop(iterations=args.niter, epochs=args.epochs)
     print("Obtained a final reward of {}".format(final_reward))
-
+    t.toc()
 
 if __name__ == "__main__":
     main()
