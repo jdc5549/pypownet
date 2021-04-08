@@ -6,8 +6,8 @@ import numpy as np
 from copy import deepcopy
 from enum import Enum
 from collections import OrderedDict
+import gym
 from gym.spaces import MultiBinary, Box, Dict, Discrete
-
 import pypownet.game
 
 
@@ -43,7 +43,7 @@ class ElementType(Enum):
 
 
 # class ActionSpace(object):
-class ActionSpace(MultiBinary):
+class ActionSpace(Discrete):
     # def __init__(self, number_generators, number_consumers, number_power_lines, substations_ids, prods_subs_ids,
     #              loads_subs_ids, lines_or_subs_id, lines_ex_subs_id):
     def __init__(self, number_generators, number_consumers, number_power_lines, number_substations, substations_ids,
@@ -63,7 +63,7 @@ class ActionSpace(MultiBinary):
         self.lines_or_subs_id = lines_or_subs_id
         self.lines_ex_subs_id = lines_ex_subs_id
         self._substations_n_elements = [len(
-            self.get_substation_switches_in_action(self.get_do_nothing_action(as_class_Action=True), sub_id)[1]) for
+        self.get_substation_switches_in_action(self.get_do_nothing_action(as_class_Action=True), sub_id)[1]) for
                                         sub_id in self.substations_ids]
 
     def get_do_nothing_action(self, as_class_Action=False):
@@ -274,7 +274,7 @@ class ActionSpace(MultiBinary):
         action.lines_status_subaction[line_id] = new_switch_value
 
 
-class ObservationSpace(Dict):
+class ObservationSpace(Box):
     def __init__(self, number_generators, number_consumers, number_power_lines, number_substations,
                  n_timesteps_horizon_maintenance):
         self.number_productions = number_generators
@@ -283,6 +283,50 @@ class ObservationSpace(Dict):
         self.number_substations = number_substations
         self.n_timesteps_horizon_maintenance = n_timesteps_horizon_maintenance
         self.grid_number_of_elements = self.number_productions + self.number_loads + 2 * self.number_power_lines
+        self.obs_length = number_consumers*5 + number_generators*5 + number_power_lines*7
+        #Floats
+        #AC Only
+        # ('reactive_loads', Box(low=-np.inf, high=np.inf, shape=(number_consumers,), dtype=np.float32)),
+        # ('voltage_loads', Box(low=-np.inf, high=np.inf, shape=(number_consumers,), dtype=np.float32)),
+        # ('reactive_productions', Box(low=-np.inf, high=np.inf, shape=(number_generators,), dtype=np.float32)),
+        # ('voltage_productions', Box(low=-np.inf, high=np.inf, shape=(number_generators,), dtype=np.float32)),
+        # ('active_flows_origin', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,), dtype=np.float32)),
+        # ('reactive_flows_origin', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,), dtype=np.float32)),
+        # ('voltage_flows_origin', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,), dtype=np.float32)),
+        # ('active_flows_extremity', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,),dtype=np.float32)),
+        # ('reactive_flows_extremity', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,),dtype=np.float32)),
+        # ('voltage_flows_extremity', Box(low=-np.inf, high=np.inf, shape=(number_power_lines,),dtype=np.float32)),
+        # ('planned_reactive_loads', Box(low=-np.inf, high=np.inf, shape=(number_consumers,), dtype=np.float32)),
+        # ('planned_voltage_productions', Box(low=-np.inf, high=np.inf, shape=(number_generators,),dtype=np.float32)),
+
+        #Both
+        #('active_loads', Box(low=-np.inf, high=np.inf, shape=(number_consumers,), dtype=np.float32)),
+        #('active_productions', Box(low=-np.inf, high=np.inf, shape=(number_generators,), dtype=np.float32)),
+        #('ampere_flows', Box(0, np.inf, (number_power_lines,), np.float32)),
+        #('planned_active_loads', Box(low=-np.inf, high=np.inf, shape=(number_consumers,),dtype=np.float32)),
+        #('planned_active_productions', Box(low=-np.inf, high=np.inf, shape=(number_generators,),dtype=np.float32)),
+        #Ints
+        #('loads_nodes', Box(-np.inf, np.inf, (number_consumers,), np.int32)),
+        #('productions_nodes', Box(-np.inf, np.inf, (number_generators,), np.int32)),
+        #('lines_or_nodes', Box(-np.inf, np.inf, (number_power_lines,), np.int32)),
+        #('lines_ex_nodes', Box(-np.inf, np.inf, (number_power_lines,), np.int32)),
+        # ('timesteps_before_lines_reconnectable', Box(0, np.inf, (number_power_lines,), np.int32)),
+        # ('timesteps_before_lines_reactionable', Box(0, np.inf, (number_power_lines,), np.int32)),
+        # ('timesteps_before_nodes_reactionable', Box(0, np.inf, (self.number_substations,), np.int32)),
+        # ('timesteps_before_planned_maintenance', Box(0, np.inf, (number_power_lines,), np.int32)),
+        #Binary
+        #('are_loads_cut', MultiBinary(n=number_consumers)),
+        #('are_productions_cut', MultiBinary(n=number_generators)),
+        #('lines_status', MultiBinary(n=number_power_lines)),
+        #Discrete
+        # ('date_year', Discrete(3000)),
+        # ('date_month', Discrete(12)),
+        # ('date_day', Discrete(32)),
+        # ('date_hour', Discrete(24)),
+        # ('date_minute', Discrete(60)),
+        # ('date_second', Discrete(60)),
+
+        super().__init__(-np.inf,np.inf,shape=(self.obs_length,))
 
         dict_spaces = OrderedDict([
             ('MinimalistACObservation', Dict(OrderedDict([
@@ -351,27 +395,27 @@ class ObservationSpace(Dict):
             ('initial_lines_ex_nodes', Box(-np.inf, np.inf, (number_power_lines,), np.int32)),
         ])
 
-        super().__init__(dict_spaces)
+        # super().__init__(dict_spaces)
 
-        def seek_shapes(gym_dict, shape):
-            """ Computes and returns the shape of self ie the set of all its attributes shapes as a tuple of tuples.
+        # def seek_shapes(gym_dict, shape):
+        #     """ Computes and returns the shape of self ie the set of all its attributes shapes as a tuple of tuples.
 
-            :param gym_dict: an instance of gym Spaces
-            :param shape: a container that is recursively filled with res
-            :return: a tuple of tuples
-            """
-            # loop through all dicts first
-            for k, v in gym_dict.spaces.items():
-                if isinstance(v, Dict) or isinstance(v, OrderedDict):
-                    shape = seek_shapes(v, shape)
-            # then save shapes
-            for k, v in gym_dict.spaces.items():
-                if not (isinstance(v, Dict) or isinstance(v, OrderedDict)):
-                    shape += (v.shape,) if not isinstance(v, Discrete) else ((1,),)
+        #     :param gym_dict: an instance of gym Spaces
+        #     :param shape: a container that is recursively filled with res
+        #     :return: a tuple of tuples
+        #     """
+        #     # loop through all dicts first
+        #     for k, v in gym_dict.spaces.items():
+        #         if isinstance(v, Dict) or isinstance(v, OrderedDict):
+        #             shape = seek_shapes(v, shape)
+        #     # then save shapes
+        #     for k, v in gym_dict.spaces.items():
+        #         if not (isinstance(v, Dict) or isinstance(v, OrderedDict)):
+        #             shape += (v.shape,) if not isinstance(v, Discrete) else ((1,),)
 
-            return shape
+        #     return shape
 
-        self.shape = seek_shapes(self, ())
+        # self.shape = seek_shapes(self, ())
 
     def array_to_observation(self, array):
         """ Converts and returns an pypownet.game.Observation from a array-object (e.g. list, numpy arrays).
@@ -450,19 +494,18 @@ class MinimalistObservation(object):
 
     def as_array(self):
         return np.concatenate((
-            self.active_loads, self.are_loads_cut, self.planned_active_loads.flatten(), self.loads_nodes,
+            #Floats
+            self.active_loads, self.active_productions,self.ampere_flows, self.planned_active_loads.flatten(), self.planned_active_productions.flatten(),
 
-            self.active_productions, self.are_productions_cut, self.planned_active_productions.flatten(),
-            self.productions_nodes,
+            #Ints
+            # self.loads_nodes,self.productions_nodes, self.lines_or_nodes, self.lines_ex_nodes, self.timesteps_before_lines_reconnectable, self.timesteps_before_lines_reactionable, 
+            # self.timesteps_before_nodes_reactionable,self.timesteps_before_planned_maintenance,         
 
-            self.lines_or_nodes, self.lines_ex_nodes,
-
-            self.ampere_flows, self.lines_status, self.timesteps_before_lines_reconnectable,
-            self.timesteps_before_lines_reactionable, self.timesteps_before_nodes_reactionable,
-            self.timesteps_before_planned_maintenance,
-
-            np.asarray([self.date_year, self.date_month, self.date_day, self.date_hour, self.date_minute,
-                        self.date_second]).flatten(),
+            #Binary
+            #self.are_loads_cut, self.are_productions_cut,self.lines_status
+            #Discrete
+            # np.asarray([self.date_year, self.date_month, self.date_day, self.date_hour, self.date_minute,
+            #             self.date_second]).flatten(),
         ))
 
     @staticmethod
@@ -785,7 +828,7 @@ class Observation(MinimalistACObservation):
         return '\n\n'.join([date_str, injections_str, lines_str])
 
 
-class RunEnv(object):
+class RunEnv(gym.Env):
     def __init__(self, parameters_folder, game_level, chronic_looping_mode='natural', start_id=0,
                  game_over_mode='soft', renderer_latency=None, without_overflow_cutoff=False, seed=None):
         """ Instantiate the game Environment based on the specified parameters.
@@ -800,9 +843,20 @@ class RunEnv(object):
         self.renderer_latency = renderer_latency
         self.without_overflow_cutoff = without_overflow_cutoff
 
-        self.game = None
-        self.action_space = None
-        self.observation_space = None
+        self.game = pypownet.game.Game(parameters_folder=self.parameters_folder, game_level=self.game_level,
+                                       chronic_looping_mode=self.chronic_looping_mode,
+                                       chronic_starting_id=self.start_id, game_over_mode=self.game_over_mode,
+                                       renderer_frame_latency=self.renderer_latency,
+                                       without_overflow_cutoff=self.without_overflow_cutoff)
+        n_prods, n_loads, n_lines, n_substations = self.game.get_number_elements()
+        self.action_space = ActionSpace(*self.game.get_number_elements(),
+                                        substations_ids=self.game.get_substations_ids(),
+                                        prods_subs_ids=self.game.get_substations_ids_prods(),
+                                        loads_subs_ids=self.game.get_substations_ids_loads(),
+                                        lines_or_subs_id=self.game.get_substations_ids_lines_or(),
+                                        lines_ex_subs_id=self.game.get_substations_ids_lines_ex())
+        self.observation_space = ObservationSpace(n_prods, n_loads, n_lines, n_substations,
+                                                  self.game.n_timesteps_horizon_maintenance)
         self.reward_signal = None
         self.last_rewards = None
 
@@ -813,12 +867,12 @@ class RunEnv(object):
 
     def reset(self):
         """ Instantiate the game Environment based on the specified parameters. """
-        # Instantiate game & action space
         self.game = pypownet.game.Game(parameters_folder=self.parameters_folder, game_level=self.game_level,
                                        chronic_looping_mode=self.chronic_looping_mode,
                                        chronic_starting_id=self.start_id, game_over_mode=self.game_over_mode,
                                        renderer_frame_latency=self.renderer_latency,
                                        without_overflow_cutoff=self.without_overflow_cutoff)
+        n_prods, n_loads, n_lines, n_substations = self.game.get_number_elements()
 
         self.action_space = ActionSpace(*self.game.get_number_elements(),
                                         substations_ids=self.game.get_substations_ids(),
@@ -826,17 +880,16 @@ class RunEnv(object):
                                         loads_subs_ids=self.game.get_substations_ids_loads(),
                                         lines_or_subs_id=self.game.get_substations_ids_lines_or(),
                                         lines_ex_subs_id=self.game.get_substations_ids_lines_ex())
-        n_prods, n_loads, n_lines, n_substations = self.game.get_number_elements()
         self.observation_space = ObservationSpace(n_prods, n_loads, n_lines, n_substations,
                                                   self.game.n_timesteps_horizon_maintenance)
-
         self.reward_signal = self.game.get_reward_signal_class()
         self.last_rewards = []
 
         return self.get_observation(True)  # in pypownet, the convention is to return any env objects as arrays
 
     def get_observation(self, as_array=True):
-        observation = self.game.export_observation()
+        observation = self.game.export_observation().as_ac_minimalist()
+        #ac_min_obs = self.observation_space.array_to_observation(observation).as_ac_minimalist().as_array()        
         return observation.as_array() if as_array else observation
     
     def _get_obs(self):
@@ -850,20 +903,24 @@ class RunEnv(object):
         load_cut_reward, prod_cut_reward, action_cost_reward, reference_grid_distance_reward, line_usage_reward
         """
         # First verify that the action is in expected condition: one array (or list) of expected size of 0 or 1
+        action_vec = self.action_space.get_do_nothing_action()
+        action_vec[action] = 1
+        action = action_vec
+
         try:
             submitted_action = self.action_space._verify_action_shape(action)
         except IllegalActionException as e:
             raise e
 
         observation, reward_flag, done = self.game.step(submitted_action)
+        #observation = observation.as_ac_minimalist()
         reward_flag = self.__wrap_exception(reward_flag)
-
         reward_aslist = self.reward_signal.compute_reward(observation=observation, action=submitted_action,
                                                           flag=reward_flag)
         self.last_rewards = reward_aslist
 
-        return observation.as_array() if observation is not None else observation, \
-               sum(reward_aslist) if do_sum else reward_aslist, done, reward_flag
+        return observation.as_ac_minimalist().as_array() if observation is not None else observation, \
+               sum(reward_aslist) if do_sum else reward_aslist, done, {}
 
     def simulate(self, action, do_sum=True):
         """ Computes the reward of the simulation of action to the current grid. """
@@ -874,13 +931,14 @@ class RunEnv(object):
             raise e
 
         observation, reward_flag, done = self.game.simulate(to_simulate_action)
+        #observation = observation.as_ac_minimalist()
         reward_flag = self.__wrap_exception(reward_flag)
 
         reward_aslist = self.reward_signal.compute_reward(observation=observation, action=to_simulate_action,
                                                           flag=reward_flag)
         self.last_rewards = reward_aslist
 
-        return observation.as_array() if observation is not None else observation, \
+        return observation.as_ac_minimalist().as_array() if observation is not None else observation, \
                sum(reward_aslist) if do_sum else reward_aslist, done, reward_flag
 
     def process_game_over(self):

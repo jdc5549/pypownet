@@ -7,6 +7,9 @@ from pypownet.environment import RunEnv
 from pypownet.runner import Runner
 import pypownet.agent
 from pytictoc import TicToc
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3 import PPO
+
 
 parser = argparse.ArgumentParser(description='CLI tool to run experiments using PyPowNet.')
 parser.add_argument('-a', '--agent', metavar='AGENT_CLASS', default='DoNothing', type=str,
@@ -63,11 +66,10 @@ def main():
                     chronic_looping_mode=args.loop_mode, start_id=args.start_id,
                     game_over_mode=game_over_mode, renderer_latency=args.latency,
                     without_overflow_cutoff=without_overflow_cutoff, seed=args.seed)
-    agent = agent_class(env)
-    # Instantiate game runner and loop
-    runner = Runner(env, agent, args.render, args.verbose, args.vverbose, args.parameters, args.level, args.niter)
-    final_reward = runner.loop(iterations=args.niter, epochs=args.epochs)
-    print("Obtained a final reward of {}".format(final_reward))
+    check_env(env)
+
+    model = PPO("MlpPolicy",env,tensorboard_log="./logs/ppo1/",verbose=1)
+    model.learn(total_timesteps=10000)
     t.toc()
 
 if __name__ == "__main__":
