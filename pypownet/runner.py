@@ -14,7 +14,7 @@ import logging
 import logging.handlers
 import csv
 import datetime
-
+import numpy as np
 LOG_FILENAME = 'runner.log'
 
 
@@ -77,16 +77,18 @@ class Runner(object):
         :param observation: input observation to be given to the agent
         :return: (new observation, action taken, reward received)
         """
-        self.logger.debug('observation: ' + str(self.environment.observation_space.array_to_observation(observation)))
+        #self.logger.debug('observation: ' + str(self.environment.observation_space.array_to_observation(observation)))
+        #ac_min_obs = self.environment.observation_space.array_to_observation(observation).as_ac_minimalist().as_array()
         action = self.agent.act(observation)
 
         # Update the environment with the chosen action
         observation, reward_aslist, done, info = self.environment.step(action, do_sum=False)
         if done:
-            self.logger.warning('\b\b\bGAME OVER! Resetting grid... (hint: %s)' % info.text)
+            #self.logger.warning('\b\b\bGAME OVER! Resetting grid... (hint: %s)' % info.text)
+            self.logger.warning('\b\b\bGAME OVER! Resetting grid...')
             observation = self.environment.process_game_over()
-        elif info:
-            self.logger.warning(info.text)
+        # elif info['reward_flag']:
+        #     self.logger.warning(info['reward_flag'].text)
 
         reward = sum(reward_aslist)
 
@@ -109,22 +111,25 @@ class Runner(object):
         :param epochs: int of number of episodes, each resetting the environment at the beginning
         :return:
         """
-        cumul_rew = 0.0
+        cumul_rew = []
         for i_episode in range(epochs):
+            ep_rew = 0
             # clean restart of environment at the beginning of each epoch
             self.logger.warning('Resetting environment...')
             observation = self.environment.reset()
             for i_iter in range(1, iterations + 1):
                 (observation, action, reward, reward_aslist, done) = self.step(observation)
-                cumul_rew += reward
+                ep_rew += reward
 
                 # save some info in txt and csv loggers
-                self.logger.info("step %d/%d - reward: %.2f; cumulative reward: %.2f" %
-                                 (i_iter, iterations, reward, cumul_rew))
-                self.dump_machinelogs(i_iter, done, reward, reward_aslist, cumul_rew,
+                self.logger.info("step %d/%d - reward: %.2f;  episode reward: %.2f" %
+                                 (i_iter, iterations, reward, ep_rew))
+                self.dump_machinelogs(i_iter, done, reward, reward_aslist, ep_rew,
                                       self.environment.get_current_datetime())
-
-        return cumul_rew
+                if done:
+                    cumul_rew.append(ep_rew)
+                    ep_rew = 0
+        return np.mean(cumul_rew)
 
     def dump_machinelogs(self, timestep_id, done, reward, reward_aslist, cumul_rew, datetime):
         if self.csv_writer is None:

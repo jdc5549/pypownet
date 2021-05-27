@@ -31,7 +31,7 @@ class Agent(ABC):
 class DoNothing(Agent):
     def act(self, observation):
         action_length = self.environment.action_space.action_length
-        return np.zeros(action_length)
+        return action_length-1
 
 
 # Examples of baselines agents
@@ -55,6 +55,22 @@ class RandomAction(Agent):
         # action = np.random.choice([0, 1], action_length)
         return action
 
+class RLModel(Agent):
+    """
+    An example of a baseline controller that produce random actions (ie random line switches and random node switches.
+    """
+
+    def __init__(self, environment,model):
+        super().__init__(environment)
+        self.model = model
+        self.ioman = ActIOnManager(destination_path='saved_actions_RandomLineSwitch.csv')
+
+    def act(self, observation):
+        action, _ = self.model.predict(observation)
+        # # or
+        # action_length = self.environment.action_space.n
+        # action = np.random.choice([0, 1], action_length)
+        return action
 
 class RandomPointAction(Agent):
     """
@@ -343,6 +359,7 @@ class ActionsFileReaderControler(Agent):
         action = self.actions[self.action_ctr]  # Correspondance first action to be played = first of list
         self.action_ctr += 1
         return action
+
 
 ###############
 # Helper agents

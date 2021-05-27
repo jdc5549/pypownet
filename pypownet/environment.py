@@ -55,7 +55,7 @@ class ActionSpace(Discrete):
         self.lines_status_subaction_length = number_power_lines
         self.action_length = self.prods_switches_subaction_length + self.loads_switches_subaction_length + \
                              self.lines_or_switches_subaction_length + self.lines_ex_switches_subaction_length + \
-                             self.lines_status_subaction_length
+                             self.lines_status_subaction_length + 1
         super().__init__(self.action_length)
         self.substations_ids = substations_ids
         self.prods_subs_ids = prods_subs_ids
@@ -91,7 +91,7 @@ class ActionSpace(Discrete):
         if isinstance(array, pypownet.game.Action):
             return array
 
-        if len(array) != self.action_length:
+        if len(array) != self.action_length-1:
             raise ValueError('Expected action as a binary array of length %d, '
                              'got %d' % (self.action_length, len(array)))
 
@@ -327,7 +327,6 @@ class ObservationSpace(Box):
         # ('date_second', Discrete(60)),
 
         super().__init__(-np.inf,np.inf,shape=(self.obs_length,))
-
         dict_spaces = OrderedDict([
             ('MinimalistACObservation', Dict(OrderedDict([
                 ('MinimalistObservation', Dict(OrderedDict([
@@ -904,7 +903,8 @@ class RunEnv(gym.Env):
         """
         # First verify that the action is in expected condition: one array (or list) of expected size of 0 or 1
         action_vec = self.action_space.get_do_nothing_action()
-        action_vec[action] = 1
+        if action != self.action_space.action_length-1:
+            action_vec[action] = 1
         action = action_vec
 
         try:
@@ -918,9 +918,9 @@ class RunEnv(gym.Env):
         reward_aslist = self.reward_signal.compute_reward(observation=observation, action=submitted_action,
                                                           flag=reward_flag)
         self.last_rewards = reward_aslist
-
+        info = {}
         return observation.as_ac_minimalist().as_array() if observation is not None else observation, \
-               sum(reward_aslist) if do_sum else reward_aslist, done, {}
+               sum(reward_aslist) if do_sum else reward_aslist, done, info
 
     def simulate(self, action, do_sum=True):
         """ Computes the reward of the simulation of action to the current grid. """
@@ -933,13 +933,13 @@ class RunEnv(gym.Env):
         observation, reward_flag, done = self.game.simulate(to_simulate_action)
         #observation = observation.as_ac_minimalist()
         reward_flag = self.__wrap_exception(reward_flag)
-
+        info = {'reward_flag': reward_flag}
         reward_aslist = self.reward_signal.compute_reward(observation=observation, action=to_simulate_action,
                                                           flag=reward_flag)
         self.last_rewards = reward_aslist
 
         return observation.as_ac_minimalist().as_array() if observation is not None else observation, \
-               sum(reward_aslist) if do_sum else reward_aslist, done, reward_flag
+               sum(reward_aslist) if do_sum else reward_aslist, done, info
 
     def process_game_over(self):
         self.game.process_game_over()

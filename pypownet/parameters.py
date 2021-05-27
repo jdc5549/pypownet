@@ -63,8 +63,7 @@ class Parameters(object):
             sys.path.append(os.path.dirname(reward_signal_expected_path))
             try:
                 self.reward_signal_class = getattr(importlib.import_module('reward_signal'), 'CustomRewardSignal')
-                self.logger.warning('Using custom reward signal CustomRewardSignal of file %s' %
-                                 reward_signal_expected_path)
+                #self.logger.warning('Using custom reward signal CustomRewardSignal of file %s' %reward_signal_expected_path)
             except ImportError:
                 self.logger.error('/!\ Using default reward signal, as reward_signal.py file is not found')
                 self.reward_signal_class = RewardSignal

@@ -8,7 +8,7 @@ from pypownet.runner import Runner
 import pypownet.agent
 from pytictoc import TicToc
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, A2C,DQN
 
 
 parser = argparse.ArgumentParser(description='CLI tool to run experiments using PyPowNet.')
@@ -35,6 +35,9 @@ parser.add_argument('-m', '--game-over-mode', metavar='GAME_OVER_MODE', type=str
                          'not break and game over do not end scenarios; '
                          'with "soft" overflowed lines are destroyed but game over do not end the scenarios; '
                          'with "hard" game over end the chronic upon game over signals and start the next ones if any.')
+parser.add_argument('-rl', '--reinforcement',type=int,default=1)
+parser.add_argument('-t', '--train',type=int,default=1)
+parser.add_argument('-mp', '--model_path',type=str,default='./default14_models')
 parser.add_argument('-r', '--render', action='store_true',
                     help='render the power network observation at each timestep (not available if --batch is not 1)')
 parser.add_argument('-la', '--latency', type=float, default=None,
@@ -54,7 +57,6 @@ def main():
     t.tic()
     args = parser.parse_args()
     env_class = RunEnv
-    agent_class = eval('pypownet.agent.{}'.format(args.agent))
 
     # Instantiate environment and agent
     if args.game_over_mode.lower() not in ['easy', 'soft', 'hard']:
@@ -66,10 +68,38 @@ def main():
                     chronic_looping_mode=args.loop_mode, start_id=args.start_id,
                     game_over_mode=game_over_mode, renderer_latency=args.latency,
                     without_overflow_cutoff=without_overflow_cutoff, seed=args.seed)
-    check_env(env)
+    
+    model_path = args.model_path
+    if args.reinforcement == 1:
+        check_env(env)
+        if(args.train == 1):
+            if args.agent == 'PPO':
+                model = PPO("MlpPolicy",env,tensorboard_log="./logs/",verbose=1)
+            elif args.agent == 'DQN':
+                model = DQN("MlpPolicy",env,tensorboard_log="./logs/",verbose=1)
+            elif args.agent == 'A2C':
+                model = A2C('MlpPolicy', env,tensorboard_log="./logs/", verbose=1)
+            model.learn(total_timesteps=args.epochs*args.niter)
+            model.save('./{}/{}'.format(model_path,args.agent))
+        else:
+            if args.agent == 'PPO':
+                model = PPO.load('./{}/PPO'.format(model_path))
+            elif args.agent == 'DQN':
+                model = DQN.load('./{}/DQN'.format(model_path))
+            elif args.agent == 'A2C':
+                model = A2C.load('./{}/A2C'.format(model_path))
+            agent_class = eval('pypownet.agent.RLModel')
+            agent = agent_class(env,model)
+            runner = Runner(env,agent, True, args.verbose, args.vverbose, args.parameters, args.level, args.niter)
+            final_reward = runner.loop(iterations=args.niter, epochs=args.epochs)
+            print("Obtained a final average episode reward of {}".format(final_reward))
 
-    model = PPO("MlpPolicy",env,tensorboard_log="./logs/ppo1/",verbose=1)
-    model.learn(total_timesteps=10000)
+    else:  
+        agent_class = eval('pypownet.agent.{}'.format(args.agent))
+        agent = agent_class(env)
+        runner = Runner(env, agent, args.render, args.verbose, args.vverbose, args.parameters, args.level, args.niter)
+        final_reward = runner.loop(iterations=args.niter, epochs=args.epochs)
+        print("Obtained a final average episode reward of {}".format(final_reward))
     t.toc()
 
 if __name__ == "__main__":
