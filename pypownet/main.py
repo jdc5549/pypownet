@@ -36,6 +36,7 @@ parser.add_argument('-m', '--game-over-mode', metavar='GAME_OVER_MODE', type=str
                          'with "soft" overflowed lines are destroyed but game over do not end the scenarios; '
                          'with "hard" game over end the chronic upon game over signals and start the next ones if any.')
 parser.add_argument('-rl', '--reinforcement',type=int,default=1)
+parser.add_argument('-ad', '--adversary',type=int,default = 0)
 parser.add_argument('-t', '--train',type=int,default=1)
 parser.add_argument('-mp', '--model_path',type=str,default='./default14_models')
 parser.add_argument('-r', '--render', action='store_true',
@@ -64,7 +65,7 @@ def main():
                                                                                              ['easy', 'soft', 'hard']))
     game_over_mode = 'hard' if args.game_over_mode.lower() == 'hard' else 'soft'
     without_overflow_cutoff = args.game_over_mode.lower() == 'easy'
-    env = env_class(parameters_folder=args.parameters, game_level=args.level,
+    env = env_class(parameters_folder=args.parameters, game_level=args.level,adversary=args.adversary,
                     chronic_looping_mode=args.loop_mode, start_id=args.start_id,
                     game_over_mode=game_over_mode, renderer_latency=args.latency,
                     without_overflow_cutoff=without_overflow_cutoff, seed=args.seed)

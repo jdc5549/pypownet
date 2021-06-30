@@ -80,7 +80,7 @@ class Runner(object):
         #self.logger.debug('observation: ' + str(self.environment.observation_space.array_to_observation(observation)))
         #ac_min_obs = self.environment.observation_space.array_to_observation(observation).as_ac_minimalist().as_array()
         action = self.agent.act(observation)
-
+        
         # Update the environment with the chosen action
         observation, reward_aslist, done, info = self.environment.step(action, do_sum=False)
         if done:

@@ -551,6 +551,7 @@ class MinimalistACObservation(MinimalistObservation):
         self.planned_voltage_productions = planned_voltage_productions
 
     def as_array(self):
+
         return np.concatenate((super(MinimalistACObservation, self).as_array(),
                                self.reactive_loads, self.voltage_loads,
                                self.reactive_productions, self.voltage_productions,
@@ -828,7 +829,7 @@ class Observation(MinimalistACObservation):
 
 
 class RunEnv(gym.Env):
-    def __init__(self, parameters_folder, game_level, chronic_looping_mode='natural', start_id=0,
+    def __init__(self, parameters_folder, game_level, adversary=0,chronic_looping_mode='natural', start_id=0,
                  game_over_mode='soft', renderer_latency=None, without_overflow_cutoff=False, seed=None):
         """ Instantiate the game Environment based on the specified parameters.
         Saves class object arguments and declares to be instantiated environment object. The function subcontracts
@@ -841,6 +842,10 @@ class RunEnv(gym.Env):
         self.game_over_mode = game_over_mode
         self.renderer_latency = renderer_latency
         self.without_overflow_cutoff = without_overflow_cutoff
+        if adversary == 0:
+            self.adversary = False
+        else:
+            self.adversary = True
 
         self.game = pypownet.game.Game(parameters_folder=self.parameters_folder, game_level=self.game_level,
                                        chronic_looping_mode=self.chronic_looping_mode,
@@ -919,8 +924,16 @@ class RunEnv(gym.Env):
                                                           flag=reward_flag)
         self.last_rewards = reward_aslist
         info = {}
-        return observation.as_ac_minimalist().as_array() if observation is not None else observation, \
-               sum(reward_aslist) if do_sum else reward_aslist, done, info
+        if observation is not None:
+            observation = observation.as_ac_minimalist().as_array()
+            if self.adversary:
+                observation[66] = 0.3 #An adversary is misreporting that this load is demanding 300 V less than it actually is
+                observation[52:74] = 0
+            #print("54: ", observation[54])
+            #print("66: ",observation[65])
+            return observation, sum(reward_aslist) if do_sum else reward_aslist, done, info
+        else:
+            return observation, sum(reward_aslist) if do_sum else reward_aslist, done, info
 
     def simulate(self, action, do_sum=True):
         """ Computes the reward of the simulation of action to the current grid. """

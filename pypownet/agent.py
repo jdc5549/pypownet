@@ -3,6 +3,7 @@ __author__ = 'marvinler'
 # Authors: Marvin Lerousseau <marvin.lerousseau@gmail.com>
 # This file is under the LGPL-v3 license and is part of PyPowNet.
 import pypownet.environment
+import numpy as np
 from abc import ABC, abstractmethod
 
 
@@ -185,15 +186,15 @@ class TreeSearchLineServiceStatus(Agent):
         self.ioman = ActIOnManager(destination_path='saved_actions_TreeSearchLineServiceStatus.csv')
 
     def act(self, observation):
-        # This agent needs to manipulate actions using grid contextual information, so the observation object needs
-        # to be of class pypownet.environment.Observation: convert from array or raise error if that is not the case
-        if not isinstance(observation, pypownet.environment.Observation):
-            try:
-                observation = self.environment.observation_space.array_to_observation(observation)
-            except Exception as e:
-                raise e
-        # Sanity check: an observation is a structured object defined in the environment file.
-        assert isinstance(observation, pypownet.environment.Observation)
+        # # This agent needs to manipulate actions using grid contextual information, so the observation object needs
+        # # to be of class pypownet.environment.Observation: convert from array or raise error if that is not the case
+        # if not isinstance(observation, pypownet.environment.Observation):
+        #     try:
+        #         observation = self.environment.observation_space.array_to_observation(observation)
+        #     except Exception as e:
+        #         raise e
+        # # Sanity check: an observation is a structured object defined in the environment file.
+        # assert isinstance(observation, pypownet.environment.Observation)
         action_space = self.environment.action_space
 
         number_of_lines = self.environment.action_space.lines_status_subaction_length
@@ -202,8 +203,8 @@ class TreeSearchLineServiceStatus(Agent):
         simulated_rewards = []
         simulated_actions = []
         for l in range(number_of_lines):
-            if self.verbose:
-                print('    Simulating switch activation line %d' % l, end='')
+            # if self.verbose:
+            #     print('    Simulating switch activation line %d' % l, end='')
             # Construct the action where only line status of line l is switched
             action = action_space.get_do_nothing_action(as_class_Action=True)
             action_space.set_lines_status_switch_from_id(action=action, line_id=l, new_switch_value=1)
@@ -212,12 +213,12 @@ class TreeSearchLineServiceStatus(Agent):
             # Store ROI values
             simulated_rewards.append(simulated_reward)
             simulated_actions.append(action)
-            if self.verbose:
-                print('; expected reward %.5f' % simulated_reward)
+            # if self.verbose:
+            #     print('; expected reward %.5f' % simulated_reward)
 
         # Also simulate the do nothing action
-        if self.verbose:
-            print('    Simulating do-nothing action', end='')
+        # if self.verbose:
+        #     print('    Simulating do-nothing action', end='')
         donothing_action = self.environment.action_space.get_do_nothing_action()
         _,donothing_simulated_reward,_,_ = self.environment.simulate(action=donothing_action)
         simulated_rewards.append(donothing_simulated_reward)
@@ -226,17 +227,16 @@ class TreeSearchLineServiceStatus(Agent):
         # Seek for the action that maximizes the reward
         best_simulated_reward = np.max(simulated_rewards)
         best_action = simulated_actions[simulated_rewards.index(best_simulated_reward)]
-
         # Dump best action into stored actions file
         self.ioman.dump(best_action)
 
-        if self.verbose:
-            if simulated_rewards.index(best_simulated_reward) == len(simulated_rewards)-1:
-                print('  Best simulated action: do-nothing')
-            else:
-                print('  Best simulated action: disconnect line %d; expected reward: %.5f' % (
-                    simulated_rewards.index(best_simulated_reward), best_simulated_reward))
-
+        # if self.verbose:
+        #     if simulated_rewards.index(best_simulated_reward) == len(simulated_rewards)-1:
+        #         print('  Best simulated action: do-nothing')
+        #     else:
+        #         print('  Best simulated action: disconnect line %d; expected reward: %.5f' % (
+        #             simulated_rewards.index(best_simulated_reward), best_simulated_reward))
+        best_action = np.argmax(best_action.as_array())
         return best_action
 
 
@@ -264,13 +264,13 @@ class GreedySearch(Agent):
 
         # This agent needs to manipulate actions using grid contextual information, so the observation object needs
         # to be of class pypownet.environment.Observation: convert from array or raise error if that is not the case
-        if not isinstance(observation, pypownet.environment.Observation):
-            try:
-                observation = self.environment.observation_space.array_to_observation(observation)
-            except Exception as e:
-                raise e
-        # Sanity check: an observation is a structured object defined in the environment file.
-        assert isinstance(observation, pypownet.environment.Observation)
+        # if not isinstance(observation, pypownet.environment.Observation):
+        #     try:
+        #         observation = self.environment.observation_space.array_to_observation(observation)
+        #     except Exception as e:
+        #         raise e
+        # # Sanity check: an observation is a structured object defined in the environment file.
+        # assert isinstance(observation, pypownet.environment.Observation)
         action_space = self.environment.action_space
 
         number_lines = action_space.lines_status_subaction_length
@@ -279,27 +279,27 @@ class GreedySearch(Agent):
         rewards, actions, names = [], [], []
 
         # Test doing nothing
-        if self.verbose:
-            print(' Simulation with no action', end='')
+        # if self.verbose:
+        #     print(' Simulation with no action', end='')
         action = action_space.get_do_nothing_action()
         _, reward_aslist, _, _ = self.environment.simulate(action, do_sum=False)
         reward = sum(reward_aslist)
-        if self.verbose:
-            print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
+        # if self.verbose:
+        #     print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
         rewards.append(reward)
         actions.append(action)
         names.append('no action')
 
         # Test every line opening
         for l in range(number_lines):
-            if self.verbose:
-                print(' Simulation with switching status of line %d' % l, end='')
+            # if self.verbose:
+            #     print(' Simulation with switching status of line %d' % l, end='')
             action = action_space.get_do_nothing_action(as_class_Action=True)
             action_space.set_lines_status_switch_from_id(action=action, line_id=l, new_switch_value=1)
             _, reward_aslist, _, _ = self.environment.simulate(action, do_sum=False)
             reward = sum(reward_aslist)
-            if self.verbose:
-                print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
+            # if self.verbose:
+            #     print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
             rewards.append(reward)
             actions.append(action)
             names.append('switching status of line %d' % l)
@@ -311,17 +311,17 @@ class GreedySearch(Agent):
                 # Look through all configurations of n_elements binary vector with first value fixed to 0
                 for configuration in list(itertools.product([0, 1], repeat=substation_n_elements - 1)):
                     new_configuration = [0] + list(configuration)
-                    if self.verbose:
-                        print(' Simulation with change in topo of sub. %d with switches %s' % (
-                            substation_id, repr(new_configuration)), end='')
+                    # if self.verbose:
+                    #     print(' Simulation with change in topo of sub. %d with switches %s' % (
+                    #         substation_id, repr(new_configuration)), end='')
                     # Construct action
                     action = action_space.get_do_nothing_action(as_class_Action=True)
                     action_space.set_substation_switches_in_action(action=action, substation_id=substation_id,
                                                                    new_values=new_configuration)
                     _, reward_aslist, _, _ = self.environment.simulate(action, do_sum=False)
                     reward = sum(reward_aslist)
-                    if self.verbose:
-                        print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
+                    # if self.verbose:
+                    #     print('; reward: [', ', '.join(['%.2f' % c for c in reward_aslist]), '] =', reward)
                     rewards.append(reward)
                     actions.append(action)
                     names.append('change in topo of sub. %d with switches %s' % (substation_id,
@@ -336,9 +336,9 @@ class GreedySearch(Agent):
         # Dump best action into stored actions file
         self.ioman.dump(best_action)
 
-        if self.verbose:
-            print('Action chosen: ', best_action_name, '; expected reward %.4f' % best_reward)
-
+        # if self.verbose:
+        #     print('Action chosen: ', best_action_name, '; expected reward %.4f' % best_reward)
+        best_action = np.argmax(best_action)
         return best_action
 
 
